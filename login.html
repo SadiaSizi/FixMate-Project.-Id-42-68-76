@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Login - FixMate</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #3d4f4d;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .highlight {
+            color: #3c755f;
+        }
+
+        .btn {
+            display: inline-block;
+            text-decoration: none;
+            font-weight: 500;
+            border-radius: 6px;
+            padding: 10px 20px;
+            margin: 5px;
+            transition: 0.3s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background-color: #34645a;
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background-color: #46726d;
+        }
+
+        .btn-secondary {
+            background-color: transparent;
+            color: white;
+            border: 2px solid #d6e0dc;
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 0.95rem;
+        }
+
+        .btn-secondary:hover {
+            background-color: #34645a;
+            border-color: #34645a;
+        }
+
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+            background-color: #3d4f4d;
+            position: relative;
+        }
+
+        .login-box {
+            background: white;
+            border-radius: 12px;
+            padding: 2.5rem;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-box h2 {
+            color: #23594d;
+            margin-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        .system-name {
+            display: block;
+            text-align: center;
+            color: #555;
+            margin-bottom: 2rem;
+            font-size: 1.1rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.4rem;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            background-color: #f9f9f9;
+        }
+
+        .form-group input:focus {
+            border-color: #3c755f;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(60, 117, 95, 0.15);
+        }
+
+        .utility-row {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .utility-row a {
+            color: #34645a;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .utility-row a:hover {
+            text-decoration: underline;
+        }
+
+        .register-link {
+            display: block;
+            text-align: center;
+            margin-top: 2rem;
+            font-size: 0.9rem;
+        }
+
+        .register-link a {
+            color: #34645a;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-block;
+            margin: 0 5px;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+
+        .error-message {
+            color: #b33939;
+            font-size: 0.85rem;
+            margin-top: 5px;
+            display: none;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(12px);
+            cursor: pointer;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <a href="1.html" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back</a>
+
+        <div class="login-box">
+            <h2>FixMate Login</h2>
+
+            <form id="loginForm" action="/authenticate" method="POST">
+                <div class="form-group">
+                    <label for="username">Email Address</label>
+                    <input type="text" id="email" name="email" required placeholder="Enter your email">
+                    <div id="usernameError" class="error-message">Username or Email is required.</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required placeholder="Enter your password">
+                    <span class="password-toggle" onclick="togglePasswordVisibility()">
+                        <i id="eyeIcon" class="fas fa-eye"></i>
+                    </span>
+                    <div id="passwordError" class="error-message">Password is required.</div>
+                </div>
+
+                <div class="utility-row">
+                    <a href="forgot_password.html">Forgot Password?</a>
+                </div>
+
+                <div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt"></i> Log In
+                    </button>
+                </div>
+
+                <div class="register-link">
+                    <p>Need Access?</p>
+                    <a href="reg2.html">Register As Employee</a>
+                    <a href="reg1.html">Register As Technician</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function togglePasswordVisibility() {
+            const passwordInput = document.getElementById("password");
+            const eyeIcon = document.getElementById("eyeIcon");
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                eyeIcon.classList.replace("fa-eye", "fa-eye-slash");
+            } else {
+                passwordInput.type = "password";
+                eyeIcon.classList.replace("fa-eye-slash", "fa-eye");
+            }
+        }
+    </script>
+</body>
+</html>
