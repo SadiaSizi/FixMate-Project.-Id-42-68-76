@@ -173,31 +173,38 @@
         </div>
     </div>
     <script>
-        document.getElementById("technicianForm").addEventListener("submit", function(e) {
-            e.preventDefault(); 
+    document.getElementById('technicianForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
 
-            const firstName = document.getElementById("firstName").value.trim();
-            const lastName = document.getElementById("lastName").value.trim();
-            const email = document.getElementById("email").value.trim();
-            const password = document.getElementById("password").value.trim();
-            const contactNumber = document.getElementById("contactNumber").value.trim();
-            const specialty = document.getElementById("specialty").value;
+        const fName = document.getElementById('firstName').value;
+        const lName = document.getElementById('lastName').value;
 
-            if (!firstName || !lastName || !email || !password || !contactNumber || !specialty) {
-                alert("Please fill in all fields.");
-                return;
+        const data = {
+            full_name: `${fName} ${lName}`,
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value,
+            role: 'Technician'
+        };
+
+        try {
+            const response = await fetch('http://localhost:3000/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                alert("✅ Technician Account Created!");
+                window.location.href = "login.html"; 
+            } else {
+                alert("Error: " + result.error);
             }
-            const emailPattern = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
-            if (!emailPattern.test(email)) {
-                alert("Please enter a valid email address.");
-                return;
-            }
-            if (password.length < 6) {
-                alert("Password must be at least 6 characters long.");
-                return;
-            }
-            alert("✅ Registration successful!\\nWelcome, " + firstName + "!");
-        });
-    </script>
+        } catch (error) {
+            alert("Server connection failed.");
+        }
+    });
+</script>
 </body>
 </html>

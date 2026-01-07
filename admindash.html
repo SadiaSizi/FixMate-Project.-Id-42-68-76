@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - FixMate</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="admin.css"> <style>
+        .table-card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background-color: #f8f9fa; color: #333; }
+        
+        .modal { display:none; position:fixed; z-index:2000; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.6); }
+        .modal-content { background:white; margin:10% auto; padding:30px; width:450px; border-radius:8px; position:relative; }
+        
+        .btn-approve { background: #34645a; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
+        .btn-approve:hover { background: #3c755f; }
+        
+        .status-badge { padding: 4px 8px; border-radius: 12px; font-size: 0.8em; font-weight: bold; }
+        .status-assigned { background: #e3f2fd; color: #1976d2; }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="logo">
+            <h2>Fix<span style="color: #a5d6a7;">MATE</span></h2>
+            <p>Administrator</p>
+        </div>
+        <nav class="nav-menu">
+            <div class="nav-item active"><i class="fas fa-home"></i> Dashboard</div>
+            <div class="nav-item"><i class="fas fa-boxes"></i> Assets</div>
+            <div class="nav-item" onclick="logout()" style="color: #ff7675; cursor: pointer;">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </div>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <header class="header">
+            <h1>System Overview</h1>
+            <div class="user-profile">
+                <span id="adminName">Admin User</span>
+                <div class="avatar">A</div>
+            </div>
+        </header>
+
+        <div class="table-card" style="border-top: 4px solid #f1c40f;">
+            <h3><i class="fas fa-inbox"></i> Employee Request Inbox</h3>
+            <p style="font-size: 0.9em; color: #666;">New maintenance reports from employees awaiting approval.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Employee</th>
+                        <th>Issue Title</th>
+                        <th>Location</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="requestInboxBody">
+                    </tbody>
+            </table>
+        </div>
+
+        <div class="table-card">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h3><i class="fas fa-tools"></i> Active Maintenance Tasks</h3>
+                <button class="btn-approve" onclick="openManualTaskModal()">+ Add Manual Task</button>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Asset</th>
+                        <th>Technician</th>
+                        <th>Deadline</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="activeTasksBody">
+                    </tbody>
+            </table>
+        </div>
+    </main>
+
+    <div class="modal" id="approveRequestModal">
+        <div class="modal-content">
+            <h3>Approve & Assign Technician</h3>
+            <hr><br>
+            <p id="displayIssueTitle" style="font-weight: bold; color: #3c755f;"></p>
+            <form id="approvalForm">
+                <input type="hidden" id="targetRequestId">
+                
+                <div style="margin-bottom: 15px;">
+                    <label>Assign Technician</label>
+                    <select id="techSelect" style="width: 100%; padding: 10px; border-radius: 4px;" required>
+                        </select>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label>Set Priority</label>
+                    <select id="prioritySelect" style="width: 100%; padding: 10px; border-radius: 4px;">
+                        <option value="Low">Low</option>
+                        <option value="Medium" selected>Medium</option>
+                        <option value="High">High</option>
+                        <option value="Critical">Critical</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label>Completion Deadline</label>
+                    <input type="date" id="deadlineInput" style="width: 100%; padding: 10px; border-radius: 4px;" required>
+                </div>
+
+                <button type="submit" class="btn-approve" style="width: 100%; padding: 12px;">Create Task & Notify Tech</button>
+                <button type="button" onclick="closeModal()" style="width: 100%; background: none; border: none; margin-top: 10px; cursor: pointer;">Cancel</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const adminName = localStorage.getItem('userName');
+            if(adminName) document.getElementById('adminName').innerText = adminName;
+            
+            loadInbox();
+            loadActiveTasks();
+            loadTechnicians();
+        });
+
+        async function loadInbox() {
+            const res = await fetch('http://localhost:3000/api/employee-requests');
+            const data = await res.json();
+            const body = document.getElementById('requestInboxBody');
+            
+            body.innerHTML = data.length ? data.map(req => `
+                <tr>
+                    <td>${req.employee_name}</td>
+                    <td><strong>${req.title}</strong></td>
+                    <td>${req.location}</td>
+                    <td>${new Date(req.created_at).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn-approve" onclick="openApprovalModal(${req.request_id}, '${req.title}')">
+                            Review & Approve
+                        </button>
+                    </td>
+                </tr>
+            `).join('') : '<tr><td colspan="5" style="text-align:center;">No pending requests.</td></tr>';
+        }
+
+        async function loadActiveTasks() {
+            const res = await fetch('http://localhost:3000/api/all-tasks'); 
+            const tasks = await res.json();
+            const body = document.getElementById('activeTasksBody');
+            
+            body.innerHTML = tasks.map(task => `
+                <tr>
+                    <td>${task.asset_name}</td>
+                    <td>${task.technician_name}</td>
+                    <td>${new Date(task.deadline).toLocaleDateString()}</td>
+                    <td><span class="status-badge status-${task.status}">${task.status.toUpperCase()}</span></td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadTechnicians() {
+            const res = await fetch('http://localhost:3000/api/technicians');
+            const techs = await res.json();
+            const select = document.getElementById('techSelect');
+            select.innerHTML = techs.map(t => `<option value="${t.full_name}">${t.full_name}</option>`).join('');
+        }
+
+        function openApprovalModal(id, title) {
+            document.getElementById('targetRequestId').value = id;
+            document.getElementById('displayIssueTitle').innerText = title;
+            document.getElementById('approveRequestModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('approveRequestModal').style.display = 'none';
+        }
+
+        document.getElementById('approvalForm').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const payload = {
+                request_id: document.getElementById('targetRequestId').value,
+                technician_name: document.getElementById('techSelect').value,
+                priority: document.getElementById('prioritySelect').value,
+                deadline: document.getElementById('deadlineInput').value
+            };
+
+            const res = await fetch('http://localhost:3000/api/approve-request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (res.ok) {
+                alert("Task Successfully Assigned!");
+                closeModal();
+                loadInbox();
+                loadActiveTasks();
+            }
+        };
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = 'adminlogin.html';
+        }
+    </script>
+</body>
+</html>

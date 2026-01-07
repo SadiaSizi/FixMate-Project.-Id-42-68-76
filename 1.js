@@ -1,6 +1,5 @@
-// DOM Content Loaded
-document.addEventListener('DOMContentLoaded', function() {
-  // Search Toggle Functionality
+document.addEventListener('DOMContentLoaded', function() 
+{
   const searchToggle = document.getElementById('searchToggle');
   const searchBox = document.getElementById('searchBox');
   
@@ -12,7 +11,6 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
     
-    // Close search when clicking outside
     document.addEventListener('click', function(e) {
       if (!searchToggle.contains(e.target) && !searchBox.contains(e.target)) {
         searchBox.classList.remove('active');
@@ -20,7 +18,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // Image Slider Functionality
   const slides = document.querySelectorAll('.slide');
   const dots = document.querySelectorAll('.dot');
   const prevBtn = document.getElementById('prevSlide');
@@ -28,8 +25,8 @@ document.addEventListener('DOMContentLoaded', function() {
   let currentSlide = 0;
   let slideInterval;
   
-  function showSlide(index) {
-    // Ensure index is within bounds
+  function showSlide(index) 
+  {
     if (index < 0) {
       currentSlide = slides.length - 1;
     } else if (index >= slides.length) {
@@ -38,17 +35,14 @@ document.addEventListener('DOMContentLoaded', function() {
       currentSlide = index;
     }
     
-    // Update slides display
     slides.forEach((slide, i) => {
       slide.classList.toggle('active', i === currentSlide);
     });
     
-    // Update dots
     dots.forEach((dot, i) => {
       dot.classList.toggle('active', i === currentSlide);
     });
     
-    // Move slides container
     const slidesContainer = document.getElementById('slides');
     slidesContainer.style.transform = `translateX(-${currentSlide * 100}%)`;
   }
@@ -63,12 +57,10 @@ document.addEventListener('DOMContentLoaded', function() {
     clearInterval(slideInterval);
   }
   
-  // Initialize slider
   if (slides.length > 0) {
     showSlide(0);
     startSlider();
     
-    // Add event listeners for buttons
     if (prevBtn) {
       prevBtn.addEventListener('click', () => {
         stopSlider();
@@ -85,7 +77,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     }
     
-    // Add event listeners for dots
     dots.forEach(dot => {
       dot.addEventListener('click', function() {
         const index = parseInt(this.getAttribute('data-index'));
@@ -95,7 +86,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
     
-    // Pause slider on hover
     const slider = document.getElementById('heroSlider');
     if (slider) {
       slider.addEventListener('mouseenter', stopSlider);
@@ -103,7 +93,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
   
-  // Smooth scrolling for anchor links
   document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function(e) {
       e.preventDefault();
@@ -120,8 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
   });
-  
-  // Navbar scroll effect
+
   const navbar = document.querySelector('.navbar');
   window.addEventListener('scroll', function() {
     if (window.scrollY > 50) {
@@ -133,33 +121,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   });
   
-  // Form submission handler
   const contactForm = document.querySelector('.contact-form');
   if (contactForm) {
     contactForm.addEventListener('submit', function(e) {
       e.preventDefault();
       
-      // Get form data
       const name = document.getElementById('name').value;
       const email = document.getElementById('email').value;
       const message = document.getElementById('message').value;
-      
-      // Simple validation
+
       if (!name || !email || !message) {
         alert('Please fill in all fields');
         return;
       }
       
-      // In a real application, you would send this data to a server
-      // For demo purposes, we'll just show a success message
       alert('Thank you for your message! We will get back to you soon.');
       
-      // Reset form
       contactForm.reset();
     });
   }
   
-  // Add animation on scroll
   function animateOnScroll() {
     const elements = document.querySelectorAll('.feature, .role, .card');
     
@@ -174,14 +155,12 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   }
   
-  // Initialize elements for animation
   document.querySelectorAll('.feature, .role, .card').forEach(element => {
     element.style.opacity = '0';
     element.style.transform = 'translateY(20px)';
     element.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
   });
-  
-  // Run on load and scroll
+
   window.addEventListener('load', animateOnScroll);
   window.addEventListener('scroll', animateOnScroll);
 });

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Dashboard - FixMate</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <style>
+        :root {
+            --bg-dark: #3d4f4d; 
+            --primary: #3c755f; 
+            --primary-btn: #34645a; 
+            --text-light: #fefefe;
+            --sidebar-width: 240px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f9; 
+            color: #333;
+            line-height: 1.6;
+        }
+        
+        .highlight { color: #a5d6a7; }
+
+        .btn {
+            display: inline-block;
+            text-decoration: none;
+            font-weight: 500;
+            border-radius: 6px;
+            padding: 10px 20px;
+            transition: 0.3s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary { background-color: var(--primary-btn); color: white; }
+        .btn-primary:hover { background-color: #46726d; }
+
+        .dashboard-container { display: flex; min-height: 100vh; }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+        }
+
+        .sidebar h2 { text-align: center; margin-bottom: 30px; font-size: 1.8rem; }
+        
+        .nav-link {
+            display: block;
+            padding: 15px 20px;
+            text-decoration: none;
+            color: var(--text-light);
+            opacity: 0.8;
+            border-left: 5px solid transparent;
+            transition: 0.3s;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-left-color: #a5d6a7;
+            opacity: 1;
+        }
+
+        .main-content { margin-left: var(--sidebar-width); flex-grow: 1; padding: 30px; }
+
+        .header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 15px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+        }
+
+        .form-group label {
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: 500; 
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%; 
+            padding: 10px; 
+            margin-bottom: 15px;
+            border: 1px solid #ccc; 
+            border-radius: 4px;
+        }
+        
+        .location-row { 
+            display: flex; 
+            gap: 20px; 
+        }
+        .location-row .form-group { 
+            flex: 1; 
+        }
+
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 10px; 
+        }
+        th, td {
+             padding: 12px; 
+             text-align: left; 
+             border-bottom: 1px solid #eee; 
+            }
+        th { 
+            background: #f8f9fa; 
+            color: #666; 
+            font-weight: 600; 
+        }
+        
+        .status-pill {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            text-transform: capitalize;
+        }
+        .status-pending { 
+            background: #fff3cd; 
+            color: #856404; 
+        }
+        .status-approved { 
+            background: #d4edda; 
+            color: #155724; 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <h2>Fix<span class="highlight">Mate</span></h2>
+            <nav>
+                <a href="#" class="nav-link active"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                <a href="#" onclick="logout()" class="nav-link"><i class="fas fa-sign-out-alt"></i> Log Out</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <div class="header-bar">
+                <h1>Welcome Back, <span id="employeeNameDisplay">User</span></h1>
+                <div class="user-info">
+                    <i class="fas fa-id-badge"></i> Role: Employee
+                </div>
+            </div>
+
+            <div class="card">
+                <h3><i class="fas fa-list-check"></i> My Recent Requests</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Title</th>
+                                <th>Location</th>
+                                <th>Submitted On</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="myRequestsBody">
+                            <tr><td colspan="4" style="text-align:center;">Loading your requests...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card" id="new-request">
+                <h3><i class="fas fa-wrench"></i> Submit New Maintenance Request</h3>
+                <form id="newRequestForm" style="margin-top: 15px;">
+                    <div class="form-group">
+                        <label for="title">Short Title of Issue *</label>
+                        <input type="text" id="title" required placeholder="e.g., Broken AC in Lab">
+                    </div>
+                    
+                    <div class="location-row">
+                        <div class="form-group">
+                            <label for="floorSelect">Building/Floor</label>
+                            <select id="floorSelect" required>
+                                <option value="">Select Building/Floor</option>
+                                <option value="Academic Block A - Ground Floor">Academic Block A - Ground Floor</option>
+                                <option value="Academic Block A - 1st Floor">Academic Block A - 1st Floor</option>
+                                <option value="Admin Building - Floor 2">Admin Building - Floor 2</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="roomSelect">Room / Area</label>
+                            <select id="roomSelect" required disabled>
+                                <option value="">Select Room/Area</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="asset_detail">Specific Asset / Item</label>
+                        <input type="text" id="asset_detail" placeholder="e.g., Projector, Water Fountain">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="description">Detailed Description *</label>
+                        <textarea id="description" rows="4" required placeholder="Describe the problem..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Submit Request</button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const floorSelect = document.getElementById('floorSelect');
+        const roomSelect = document.getElementById('roomSelect');
+        const newRequestForm = document.getElementById('newRequestForm');
+        
+        const loggedInUserName = localStorage.getItem('userName');
+        if (!loggedInUserName) {
+            window.location.href = 'login.html';
+        }
+        document.getElementById('employeeNameDisplay').textContent = loggedInUserName;
+
+        const roomData = {
+            'Admin Building - Floor 2': ['Director\'s Office', 'Accounts Office', 'Conference Room'],
+            'Academic Block A - Ground Floor': ['LH-101', 'LH-102', 'Reception'],
+            'Academic Block A - 1st Floor': ['Faculty Office', 'IT Lab 1', 'Classroom 205']
+        };
+
+        floorSelect.addEventListener('change', function() {
+            const selectedFloor = this.value;
+            roomSelect.innerHTML = '<option value="">Select Room/Area</option>';
+            roomSelect.disabled = true;
+
+            if (selectedFloor && roomData[selectedFloor]) {
+                roomData[selectedFloor].forEach(room => {
+                    const option = document.createElement('option');
+                    option.value = room;
+                    option.textContent = room;
+                    roomSelect.appendChild(option);
+                });
+                roomSelect.disabled = false;
+            }
+        });
+
+        async function fetchMyRequests() {
+            try {
+                const response = await fetch(`http://localhost:3000/api/my-requests/${encodeURIComponent(loggedInUserName)}`);
+                const requests = await response.json();
+                const body = document.getElementById('myRequestsBody');
+                
+                if (requests.length === 0) {
+                    body.innerHTML = '<tr><td colspan="4" style="text-align:center;">No requests found.</td></tr>';
+                    return;
+                }
+
+                body.innerHTML = requests.map(req => `
+                    <tr>
+                        <td><strong>${req.title}</strong></td>
+                        <td>${req.location}</td>
+                        <td>${new Date(req.created_at).toLocaleDateString()}</td>
+                        <td><span class="status-pill status-${req.status}">${req.status}</span></td>
+                    </tr>
+                `).join('');
+            } catch (err) {
+                console.error("Error loading requests:", err);
+            }
+        }
+
+        newRequestForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const submissionData = {
+                employee_name: loggedInUserName,
+                title: document.getElementById('title').value,
+                location: `${floorSelect.value} - ${roomSelect.value}`,
+                asset_detail: document.getElementById('asset_detail').value,
+                description: document.getElementById('description').value,
+            };
+
+            const response = await fetch('http://localhost:3000/api/submit-request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(submissionData)
+            });
+
+            if (response.ok) {
+                alert("Request Submitted!");
+                newRequestForm.reset();
+                fetchMyRequests(); 
+            }
+        });
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = "login.html";
+        }
+
+        fetchMyRequests();
+    </script>
+</body>
+</html>

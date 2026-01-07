@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register - FixMate</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { 
+            font-family: "Segoe UI", sans-serif; 
+            background-color: #3d4f4d; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh; 
+            margin: 0; 
+        }
+        .reg-box { 
+            background: white; 
+            padding: 2.5rem; 
+            border-radius: 12px; 
+            width: 100%;
+             max-width: 450px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2); 
+        }
+        h2 { 
+            color: #23594d; 
+            text-align: center; 
+            margin-bottom: 1.5rem; 
+        }
+        .form-group { 
+            margin-bottom: 1.2rem; 
+        }
+        label { 
+            display: block; 
+            margin-bottom: 5px; 
+            color: #555; 
+            font-weight: 500; 
+        }
+        input, select { 
+            width: 100%; 
+            padding: 12px; 
+            border: 1px solid #ddd; 
+            border-radius: 6px; 
+            background: #f9f9f9; 
+        }
+        .btn-primary { 
+            background: #34645a; 
+            color: white; 
+            width: 100%; 
+            padding: 12px; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 1rem; 
+            transition: 0.3s; 
+        }
+        .btn-primary:hover { 
+            background: #46726d; 
+        }
+        .link { 
+            text-align: center; 
+            margin-top: 1rem; 
+            font-size: 0.9rem; 
+        }
+        .link a { 
+            color: #34645a; 
+            text-decoration: none; 
+            font-weight: 600; 
+        }
+    </style>
+</head>
+<body>
+    <div class="reg-box">
+        <h2>Join FixMate</h2>
+        <form id="regForm">
+            <input type="text" id="user" placeholder="full_name" required><br>
+            <input type="email" id="email" placeholder="Email" required><br>
+            <select id="role">
+                <option value="admin">Admin</option>
+            </select><br>
+            <input type="password" id="pass" placeholder="Password" required><br>
+            <button type="submit">Create Account</button>
+        </form>
+    </div>
+
+    <script>
+        document.getElementById('regForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const data = {
+                full_name: document.getElementById('user').value,
+                email: document.getElementById('email').value,
+                role: document.getElementById('role').value,
+                password: document.getElementById('pass').value   
+            };
+
+            const response = await fetch('http://localhost:3000/api/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                alert(result.message);
+                window.location.href = "adminlogin.html"; 
+            } else {
+                alert("Error: " + result.error);
+            }
+        });
+</script>
+</body>
+</html>

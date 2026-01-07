@@ -218,49 +218,35 @@
     </div>
 
     <script>
-    function togglePasswordVisibility() {
-        const passwordInput = document.getElementById("password");
-        const eyeIcon = document.getElementById("eyeIcon");
+    document.getElementById("loginForm").addEventListener("submit", async function (e) {
+    e.preventDefault();
 
-        if (passwordInput.type === "password") {
-            passwordInput.type = "text";
-            eyeIcon.classList.replace("fa-eye", "fa-eye-slash");
-        } else {
-            passwordInput.type = "password";
-            eyeIcon.classList.replace("fa-eye-slash", "fa-eye");
-        }
-    }
+    const email = document.getElementById("email").value;
+    const password = document.getElementById("password").value;
 
-    document.getElementById("loginForm").addEventListener("submit", function (e) {
-        e.preventDefault();
-
-        const email = document.getElementById("email").value.trim();
-        const password = document.getElementById("password").value.trim();
-
-        const emailError = document.getElementById("usernameError");
-        const passwordError = document.getElementById("passwordError");
-
-        emailError.style.display = "none";
-        passwordError.style.display = "none";
-
-        if (email === "") {
-            emailError.style.display = "block";
-            return;
-        }
-
-        if (password === "") {
-            passwordError.style.display = "block";
-            return;
-        }
-
-         if (email.includes("tech")) {
-            window.location.href = "techdash.html";
-        }
-
-        else {
-            window.location.href = "employeedash.html";
-        }
+    const response = await fetch('http://localhost:3000/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
     });
+
+    const data = await response.json();
+
+    if (response.ok) {
+        localStorage.setItem('userName', data.user.full_name);
+        localStorage.setItem('userRole', data.user.role);
+
+        if (data.user.role === 'Technician') {
+            window.location.href = "techdash.html";
+        } else if (data.user.role === 'Employee') {
+            window.location.href = "employeedash.html";
+        } else {
+            alert("Admins should use the Admin Login portal.");
+        }
+    } else {
+        alert(data.error);
+    }
+});
 </script>
 </body>
 </html>

@@ -14,7 +14,7 @@
       font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
       background-color: #3d4f4d;
     }
-
+ 
     .back-btn {
       position: absolute;
       top: 20px;
@@ -182,44 +182,38 @@
   </div>
 
   <script>
-    document
-      .getElementById("employeeForm")
-      .addEventListener("submit", function (e) {
+    document.getElementById('employeeForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const firstName = document.getElementById("firstName").value.trim();
-        const lastName = document.getElementById("lastName").value.trim();
-        const email = document.getElementById("email").value.trim();
-        const password = document.getElementById("password").value.trim();
-        const department = document.getElementById("department").value;
-        const contactNumber =
-          document.getElementById("contactNumber").value.trim();
+        const fName = document.getElementById('firstName').value;
+        const lName = document.getElementById('lastName').value;
+        
+        const data = {
+            full_name: `${fName} ${lName}`,
+            email: document.getElementById('email').value,
+            password: document.getElementById('password').value,
+            role: 'Employee'
+        };
 
-        if (
-          !firstName ||
-          !lastName ||
-          !email ||
-          !password ||
-          !department ||
-          !contactNumber
-        ) {
-          alert("Please fill in all fields.");
-          return;
+        try {
+            const response = await fetch('http://localhost:3000/api/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                alert("✅ Employee Account Created Successfully!");
+                window.location.href = "login.html"; 
+            } else {
+                alert("Error: " + result.error);
+            }
+        } catch (error) {
+            alert("Server connection failed.");
         }
-
-        const emailPattern = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
-        if (!emailPattern.test(email)) {
-          alert("Please enter a valid email address.");
-          return;
-        }
-
-        if (password.length < 6) {
-          alert("Password must be at least 6 characters long.");
-          return;
-        }
-
-        alert("✅ Registration successful!\\nWelcome, " + firstName + "!");
-      });
-  </script>
+    });
+</script>
 </body>
 </html>
