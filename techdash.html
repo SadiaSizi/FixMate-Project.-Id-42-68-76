@@ -8,246 +8,187 @@
     <link rel="stylesheet" href="tech.css">
 </head>
 <body>
-    <div class="mobile-toggle" id="mobileToggle">
-        <i class="fas fa-bars"></i>
+
+<div class="mobile-toggle" id="mobileToggle">
+    <i class="fas fa-bars"></i>
+</div>
+
+<aside class="sidebar" id="sidebar">
+    <div class="logo">
+        <h2>Fix<span style="color:#a5d6a7;">MATE</span></h2>
+        <p>Technician Portal</p>
     </div>
 
-    <aside class="sidebar" id="sidebar">
-        <div class="logo">
-            <h2>Fix<span style="color: #a5d6a7;">MATE</span></h2>
-            <p>Technician Portal</p>
-        </div>
-        
-        <div class="nav-menu">
-            <div class="nav-item active">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-            </div>
-            <div class="nav-item">
-                <i class="fas fa-tasks"></i>
-                <span>My Tasks</span>
-            </div>
-            
-            <div class="nav-item" onclick="logout()" style="cursor:pointer; color: #ff7675; margin-top: 20px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
-                <i class="fas fa-sign-out-alt"></i>
-                <span>Logout</span>
-            </div>
-        </div>
-    </aside>
-
-    <main class="main-content">
-        <div class="header">
-            <div class="welcome-section">
-                <h1 id="welcomeTitle">Welcome back</h1>
-                <p>Here's your maintenance tasks for today</p>
-            </div>
-            <div class="user-info">
-                <div class="notification">
-                    <i class="fas fa-bell"></i>
-                    <span class="notification-badge"></span>
-                </div>
-                <div class="user-avatar" id="userInitial" style="background: #a5d6a7; color: #1a1a1a; width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold;">
-                    T
-                </div>
-            </div>
+    <div class="nav-menu">
+        <div class="nav-item active">
+            <i class="fas fa-tachometer-alt"></i>
+            <span>Dashboard</span>
         </div>
 
-        <div class="summary-cards">
-            <div class="card">
-                <div class="card-icon card-today"><i class="fas fa-calendar-day"></i></div>
-                <div class="card-title">Total Tasks</div>
-                <div class="card-value" id="stat-total">0</div>
-            </div>
-            <div class="card">
-                <div class="card-icon card-inprogress"><i class="fas fa-tools"></i></div>
-                <div class="card-title">In Progress</div>
-                <div class="card-value" id="stat-inprogress">0</div>
-            </div>
-            <div class="card">
-                <div class="card-icon card-completed"><i class="fas fa-check-circle"></i></div>
-                <div class="card-title">Completed</div>
-                <div class="card-value" id="stat-completed">0</div>
+        <div class="nav-item" onclick="logout()" style="cursor:pointer; color:#ff7675;">
+            <i class="fas fa-sign-out-alt"></i>
+            <span>Logout</span>
+        </div>
+    </div>
+</aside>
+
+<main class="main-content">
+
+    <div class="header">
+        <h1 id="welcomeTitle">Welcome</h1>
+    </div>
+
+    <div class="summary-cards">
+        <div class="card">
+            <div class="card-title">Total Tasks</div>
+            <div class="card-value" id="stat-total">0</div>
+        </div>
+        <div class="card">
+            <div class="card-title">In Progress</div>
+            <div class="card-value" id="stat-inprogress">0</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Completed</div>
+            <div class="card-value" id="stat-completed">0</div>
+        </div>
+    </div>
+
+    <div class="dashboard-layout">
+        <div class="task-list-section">
+            <h2>My Assigned Tasks</h2>
+            <div id="taskList"></div>
+        </div>
+
+        <div class="task-detail-section">
+            <h2>Task Details</h2>
+            <div id="taskDetailCard">
+                <p>Select a task to update status</p>
             </div>
         </div>
 
-        <div class="dashboard-layout">
-            <div class="task-list-section">
-                <div class="section-header">
-                    <h2>Assigned Maintenance Tasks</h2>
-                    <div class="filters">
-                        <button class="filter-btn active" onclick="filterTasks('all')">All</button>
-                        <button class="filter-btn" onclick="filterTasks('critical')">Critical</button>
-                    </div>
-                </div>
-                
-                <div class="task-list" id="taskList">
-                    </div>
-            </div>
+    </div>
+</main>
 
-            <div class="task-detail-section">
-                <div class="section-header">
-                    <h2>Task Details</h2>
-                </div>
-                
-                <div class="task-detail-card" id="taskDetailCard">
-                    <div class="empty-state">
-                        <i class="fas fa-clipboard-list"></i>
-                        <h3>Select a Task</h3>
-                        <p>Click on a task from the list to view details and update status</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
+<script>
+let tasks = [];
+const technicianName = localStorage.getItem('userName');
+const role = localStorage.getItem('userRole');
 
-    <script>
-        let tasks = []; 
-        const currentTechName = localStorage.getItem('userName');
-        const currentTechRole = localStorage.getItem('userRole');
+document.addEventListener('DOMContentLoaded', () => {
+    if (!technicianName || role !== 'Technician') {
+        window.location.href = 'login.html';
+        return;
+    }
 
-        document.addEventListener('DOMContentLoaded', function() {
-            if (!currentTechName || currentTechRole !== 'Technician') {
-                window.location.href = 'login.html';
-                return;
-            }
+    document.getElementById('welcomeTitle').innerText =
+        `Welcome back, ${technicianName}`;
 
-            document.getElementById('welcomeTitle').innerText = `Welcome back, ${currentTechName}`;
-            document.getElementById('userInitial').innerText = currentTechName.charAt(0).toUpperCase();
-            
-            fetchTasks();
-            setupMobileMenu();
-        });
+    fetchTasks();
+    setupMobileMenu();
+});
 
-        async function fetchTasks() {
-            try {
-                const response = await fetch(`http://localhost:3000/api/tech-tasks/${encodeURIComponent(currentTechName)}`);
-                tasks = await response.json();
-                renderTaskList(tasks);
-                updateSummaryStats(tasks);
-            } catch (error) {
-                console.error("Error fetching tasks:", error);
-            }
-        }
 
-        async function saveTaskUpdates(taskId) {
-            const newStatus = document.getElementById('statusSelector').value;
-            const newDesc = document.getElementById('remarksInput').value;
+async function fetchTasks() {
+    const res = await fetch(
+        `http://localhost:3000/api/tech-tasks/${encodeURIComponent(technicianName)}`
+    );
+    tasks = await res.json();
+    renderTaskList(tasks);
+    updateStats(tasks);
+}
 
-            try {
-                const response = await fetch(`http://localhost:3000/api/update-task/${taskId}`, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ status: newStatus, description: newDesc })
-                });
 
-                if (response.ok) {
-                    showNotification("✅ Task updated successfully!");
-                    fetchTasks(); 
-                }
-            } catch (error) {
-                showNotification("❌ Failed to update task", "warning");
-            }
-        }
+function renderTaskList(data) {
+    const list = document.getElementById('taskList');
+    list.innerHTML = '';
 
-        function renderTaskList(taskArray) {
-            const taskListElement = document.getElementById('taskList');
-            taskListElement.innerHTML = '';
-            
-            if (taskArray.length === 0) {
-                taskListElement.innerHTML = '<div class="empty-state"><p>No tasks assigned to you.</p></div>';
-                return;
-            }
+    if (data.length === 0) {
+        list.innerHTML = '<p>No tasks assigned.</p>';
+        return;
+    }
 
-            taskArray.forEach(task => {
-                const taskElement = document.createElement('div');
-                taskElement.className = 'task-item';
-                taskElement.dataset.taskId = task.id;
-                
-                const date = new Date(task.deadline).toLocaleDateString();
+    data.forEach(task => {
+        const div = document.createElement('div');
+        div.className = 'task-item';
+        div.innerHTML = `
+            <strong>#${task.id}</strong> - ${task.asset_name}<br>
+            Status: <b>${task.status}</b>
+        `;
+        div.onclick = () => showTaskDetails(task.id);
+        list.appendChild(div);
+    });
+}
 
-                taskElement.innerHTML = `
-                    <div class="task-header">
-                        <div class="task-id">#${task.id}</div>
-                        <div class="task-priority priority-${task.priority.toLowerCase()}">${task.priority.toUpperCase()}</div>
-                    </div>
-                    <div class="task-title">${task.asset_name}</div>
-                    <div class="task-meta">
-                        <div><i class="fas fa-map-marker-alt"></i> ${task.location}</div>
-                        <div><i class="far fa-clock"></i> Due: ${date}</div>
-                    </div>
-                    <div class="task-status status-${task.status.toLowerCase()}">${task.status}</div>
-                `;
-                taskElement.onclick = () => selectTask(task.id);
-                taskListElement.appendChild(taskElement);
-            });
-        }
 
-        function renderTaskDetail(taskId) {
-            const task = tasks.find(t => t.id == taskId);
-            if (!task) return;
+function showTaskDetails(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
 
-            const taskDetailCard = document.getElementById('taskDetailCard');
-            taskDetailCard.innerHTML = `
-                <div class="detail-header">
-                    <h3>Task #${task.id}</h3>
-                    <span class="task-priority priority-${task.priority}">${task.priority.toUpperCase()}</span>
-                </div>
-                <div class="detail-section">
-                    <h4>Description / Remarks</h4>
-                    <textarea class="remarks-input" id="remarksInput" style="width:100%; height:80px; padding:10px; border-radius:5px; border:1px solid #ddd;">${task.description}</textarea>
-                </div>
-                <div class="detail-section" style="margin-top:15px;">
-                    <h4>Status</h4>
-                    <select class="status-selector" id="statusSelector" style="width:100%; padding:10px; border-radius:5px;">
-                        <option value="assigned" ${task.status === 'assigned' ? 'selected' : ''}>Assigned</option>
-                        <option value="inprogress" ${task.status === 'inprogress' ? 'selected' : ''}>In Progress</option>
-                        <option value="completed" ${task.status === 'completed' ? 'selected' : ''}>Completed</option>
-                    </select>
-                </div>
-                <button class="btn-primary" onclick="saveTaskUpdates(${task.id})" style="margin-top:20px; width:100%; padding:12px; background:#a5d6a7; border:none; border-radius:5px; cursor:pointer; font-weight:bold;">
-                    <i class="fas fa-save"></i> Save Changes
-                </button>
-            `;
-        }
+    document.getElementById('taskDetailCard').innerHTML = `
+        <h3>Task #${task.id}</h3>
 
-        function selectTask(taskId) {
-            document.querySelectorAll('.task-item').forEach(i => i.classList.remove('selected'));
-            const activeItem = document.querySelector(`[data-task-id="${taskId}"]`);
-            if(activeItem) activeItem.classList.add('selected');
-            renderTaskDetail(taskId);
-        }
+        <p><b>Asset:</b> ${task.asset_name}</p>
+        <p><b>Location:</b> ${task.location}</p>
 
-        function updateSummaryStats(taskArray) {
-            document.getElementById('stat-total').innerText = taskArray.length;
-            document.getElementById('stat-inprogress').innerText = taskArray.filter(t => t.status === 'inprogress').length;
-            document.getElementById('stat-completed').innerText = taskArray.filter(t => t.status === 'completed').length;
-        }
+        <p><b>Description:</b></p>
+        <p style="background:#f4f4f4; padding:10px; border-radius:5px;">
+            ${task.description}
+        </p>
 
-        function filterTasks(type) {
-            let filtered = tasks;
-            if (type === 'critical') {
-                filtered = tasks.filter(t => t.priority.toLowerCase() === 'critical' || t.priority.toLowerCase() === 'high');
-            }
-            renderTaskList(filtered);
-            
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-        }
+        <label><b>Update Status</b></label>
+        <select id="statusSelector" style="width:100%; padding:10px;">
+            <option value="In Progress" ${task.status === 'In Progress' ? 'selected' : ''}>
+                In Progress
+            </option>
+            <option value="Completed" ${task.status === 'Completed' ? 'selected' : ''}>
+                Completed
+            </option>
+        </select>
 
-        function showNotification(msg) {
-            alert(msg); 
-        }
+        <button onclick="updateStatus(${task.id})">
+            Update Status
+        </button>
+    `;
+}
 
-        function setupMobileMenu() {
-            const toggle = document.getElementById('mobileToggle');
-            const sidebar = document.getElementById('sidebar');
-            toggle.addEventListener('click', () => sidebar.classList.toggle('active'));
-        }
+async function updateStatus(taskId) {
+    const status = document.getElementById('statusSelector').value;
 
-        function logout() {
-            localStorage.clear();
-            window.location.href = "login.html";
-        }
-    </script>
+    const res = await fetch('http://localhost:3000/api/update-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            task_id: taskId,
+            status: status
+        })
+    });
+
+    if (res.ok) {
+        alert('Status updated successfully');
+        fetchTasks();
+    }
+}
+
+function updateStats(data) {
+    document.getElementById('stat-total').innerText = data.length;
+    document.getElementById('stat-inprogress').innerText =
+        data.filter(t => t.status === 'In Progress').length;
+    document.getElementById('stat-completed').innerText =
+        data.filter(t => t.status === 'Completed').length;
+}
+
+
+function setupMobileMenu() {
+    const toggle = document.getElementById('mobileToggle');
+    const sidebar = document.getElementById('sidebar');
+    toggle.onclick = () => sidebar.classList.toggle('active');
+}
+
+function logout() {
+    localStorage.clear();
+    window.location.href = 'login.html';
+}
+</script>
+
 </body>
 </html>

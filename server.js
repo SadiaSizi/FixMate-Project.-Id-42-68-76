@@ -2,229 +2,339 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const bcrypt = require('bcrypt');
-
+const {v4: uuidv4}= require('uuid');
+const transporter = require('./email');
 const app = express();
-app.use(express.json()); 
-app.use(cors());       
+require('dotenv').config();
 
-const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: '12345sizi', 
-    database: 'fixmate_db'
-});
+app.use(express.json());
+app.use(cors());
+
 
 db.connect(err => {
-    if (err) console.error("Database connection failed: " + err.stack);
-    else console.log("Connected to MySQL Database!");
-});
-
-app.post('/api/register', async (req, res) => {
-    const { full_name, email, password, role } = req.body; 
-    
-    try {
-        const hashpassword = await bcrypt.hash(password, 10);
-        
-        const sql = "INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)";
-        
-        db.query(sql, [full_name, email, hashpassword, role], (err, result) => {
-            if (err) {
-                console.log("DB Error:", err.message);
-                return res.status(500).json({ error: "Email already exists or Database error" });
-            }
-            res.json({ message: "Success! User created." });
-        });
-    } catch (error) {
-        res.status(500).json({ error: "Server Error" });
+    if (err) {
+        console.error("Database connection failed:", err);
+    } else {
+        console.log("Connected to MySQL Database");
     }
 });
 
-app.post('/api/login', async (req, res) => {
-    const { email, password } = req.body;
+app.post('/api/register', async (req, res) => {
+    const { full_name, email, password, role } = req.body;
 
     try {
-        const sql = "SELECT * FROM users WHERE email = ?";
-        db.query(sql, [email], async (err, results) => {
-            if (err) return res.status(500).json({ error: "Database error" });
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const token = uuidv4();
 
-            if (results.length === 0) {
-                return res.status(401).json({ error: "User not found!" });
+        const sql = `
+            INSERT INTO pending_users (full_name, email, password, role, verification_token)
+            VALUES (?, ?, ?, ?, ?)
+        `;
+
+        db.query(sql, [full_name, email, hashedPassword, role, token], err => {
+            if (err) {
+                return res.status(500).json({ error: "Registration failed" });
             }
+            const verifyLink = `http://localhost:3000/api/verify-email/${token}`;
 
-            const user = results[0];
-            const isMatch = await bcrypt.compare(password, user.password);
-
-            if (isMatch) {
-                res.json({ 
-                    message: "Login successful!", 
-                    user: { full_name: user.full_name, role: user.role } 
-                });
-            } else {
-                res.status(401).json({ error: "Incorrect password!" });
-            }
+            transporter.sendMail({
+                to: email,
+                subject: 'Verify your FixMate Account',
+                html: `
+                    <h2>FixMate Email Verification</h2>
+                    <p>Click the link below to verify your email:</p>
+                    <a href="${verifyLink}">Verify Email</a>
+                `
+            });
+            res.json({ message: 'Verification email sent. Please check inbox.' });
         });
-    } catch (error) {
+
+    } catch (err) {
         res.status(500).json({ error: "Server error" });
     }
 });
 
+app.get('/api/verify-email/:token', (req, res) => {
+    const token = req.params.token;
+
+    const findSql = "SELECT * FROM pending_users WHERE verification_token = ?";
+
+    db.query(findSql, [token], (err, result) => {
+        if (err) return res.send('Database error');
+
+        if (result.length === 0) return res.send('Invalid or expired verification link');
+
+        const user = result[0];
+
+        const insertSql = "INSERT INTO users (full_name, email, password, role) VALUES (?, ?, ?, ?)";
+
+        db.query(insertSql, [user.full_name, user.email, user.password, user.role], (err) => {
+            if (err) return res.send('Verification failed');
+
+            db.query("DELETE FROM pending_users WHERE id = ?", [user.id], (err) => {
+                if (err) console.log(err);
+                res.send('✅ Email verified successfully! You can now login.');
+            });
+        });
+    });
+});
+
+
+app.post('/api/login', (req, res) => {
+    const { email, password } = req.body;
+
+    db.query("SELECT * FROM users WHERE email = ?", [email], async (err, results) => {
+        if (err) 
+            return res.status(500).json({ error: "Database error" });
+        if (results.length === 0) 
+            return res.status(401).json({ error: "User not found" });
+
+        const user = results[0];
+        const match = await bcrypt.compare(password, user.password);
+
+        if (!match) 
+            return res.status(401).json({ error: "Invalid password" });
+
+        res.json({
+            message: "Login successful",
+            role: user.role,
+            name: user.full_name,
+            userId: user.user_id 
+        });
+    });
+});
+
 app.get('/api/dashboard-stats', (req, res) => {
-    const q1 = "SELECT COUNT(*) as total FROM assets";
-    const q2 = "SELECT COUNT(*) as total FROM users WHERE role = 'Technician'";
-    
-    db.query(q1, (err, assetResult) => {
+    const assetQ = "SELECT COUNT(*) AS totalAssets FROM assets";
+    const techQ = "SELECT COUNT(*) AS totalTechs FROM users WHERE role='Technician'";
+
+    db.query(assetQ, (err, assetRes) => {
         if (err) return res.status(500).json(err);
-        
-        db.query(q2, (err, techResult) => {
+
+        db.query(techQ, (err, techRes) => {
             if (err) return res.status(500).json(err);
-            
+
             res.json({
-                totalAssets: assetResult[0].total,
-                totalTechs: techResult[0].total,
+                totalAssets: assetRes[0].totalAssets,
+                totalTechs: techRes[0].totalTechs,
                 systemUptime: "98%"
             });
         });
     });
 });
 
+app.post('/api/assets', (req, res) => {
+    const { asset_name, asset_type, location, description, next_maintenance } = req.body;
+
+    const sql = `
+        INSERT INTO assets
+        (asset_name, asset_type, location, description, status, next_maintenance)
+        VALUES (?, ?, ?, ?, 'Operational', ?)
+    `;
+
+    db.query(sql, [asset_name, asset_type, location, description, next_maintenance],
+        err => {
+            if (err) return res.status(500).json(err);
+            res.json({ message: "Asset added successfully" });
+        }
+    );
+});
+
 
 app.get('/api/assets', (req, res) => {
-    const sql = "SELECT * FROM assets";
-    db.query(sql, (err, results) => {
+    db.query("SELECT * FROM assets", (err, results) => {
         if (err) return res.status(500).json(err);
         res.json(results);
     });
 });
 
-
-app.post('/api/assets', (req, res) => {
-    const { asset_name, asset_type, location, status } = req.body;
-
-    const sql = "INSERT INTO assets (asset_name, asset_type, location, status) VALUES (?, ?, ?, ?)";
-    
-    db.query(sql, [asset_name, asset_type, location, status], (err, result) => {
-        if (err) {
-            console.error("Error inserting asset:", err);
-            return res.status(500).json({ error: "Failed to add asset" });
+app.delete('/api/assets/:id', (req, res) => {
+    db.query(
+        "DELETE FROM assets WHERE asset_id = ?",
+        [req.params.id],
+        err => {
+            if (err) return res.status(500).json(err);
+            res.json({ message: "Asset deleted" });
         }
-        res.json({ message: "Asset added successfully!", id: result.insertId });
-    });
+    );
 });
 
 
-app.get('/api/tech-tasks/:techName', (req, res) => {
-    const techName = req.params.techName;
-    const sql = `
-        SELECT t.*, a.asset_name, a.location 
-        FROM maintenance_tasks t 
-        JOIN assets a ON t.asset_id = a.asset_id 
-        WHERE t.technician_name = ?
-        ORDER BY t.deadline ASC`;
+app.post("/api/approve-request", (req, res) => {
+    const { request_id, asset_id, technician_name, priority, deadline } = req.body;
 
-    db.query(sql, [techName], (err, results) => {
+    const taskSql = `
+        INSERT INTO maintenance_tasks(request_id, asset_id, technician_name, priority, deadline, status) VALUES (?, ?, ?, ?, ?, 'Assigned')`
+        ;
+
+    db.query(taskSql,[request_id, asset_id, technician_name, priority, deadline],(err) => {
         if (err) return res.status(500).json(err);
-        res.json(results);
-    });
-});
+        db.query(
+            "UPDATE maintenance_requests SET status='Approved' WHERE request_id=?",
+            [request_id]
+        );
 
-app.put('/api/update-task/:id', (req, res) => {
-    const taskId = req.params.id;
-    const { status, description } = req.body;
-    
-    const sql = "UPDATE maintenance_tasks SET status = ?, description = ? WHERE id = ?";
-    db.query(sql, [status, description, taskId], (err, result) => {
-        if (err) return res.status(500).json(err);
-        res.json({ message: "Update successful" });
-    });
-});
-
-app.post('/api/assign-task', (req, res) => {
-    const { asset_id, technician_name, priority, description, deadline } = req.body;
-    
-    const sql = `INSERT INTO maintenance_tasks 
-                (asset_id, technician_name, priority, description, deadline, status) 
-                VALUES (?, ?, ?, ?, ?, 'assigned')`;
-    
-    db.query(sql, [asset_id, technician_name, priority, description, deadline], (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ error: "Database error" });
-        }
-        res.json({ message: "Task assigned successfully!", taskId: result.insertId });
+        res.json({ message: "Task created & technician notified" });
     });
 });
 
 app.get('/api/technicians', (req, res) => {
-    const sql = "SELECT full_name FROM users WHERE role = 'Technician'";
-    db.query(sql, (err, results) => {
-        if (err) return res.status(500).json(err);
-        res.json(results);
-    });
+    db.query(
+        "SELECT full_name FROM users WHERE role='Technician'",
+        (err, results) => {
+            if (err) return res.status(500).json(err);
+            res.json(results);
+        }
+    );
 });
 
 app.post('/api/submit-request', (req, res) => {
-    const { employee_name, title, location, asset_detail, description } = req.body;
-    
-    const sql = `INSERT INTO employee_requests 
-                (employee_name, title, location, asset_detail, description) 
-                VALUES (?, ?, ?, ?, ?)`;
-    
-    db.query(sql, [employee_name, title, location, asset_detail, description], (err, result) => {
-        if (err) {
-            console.error(err);
-            return res.status(500).json({ error: "Failed to save request" });
-        }
-        res.json({ message: "Request submitted successfully!" });
+    const { asset_id, employee_id, title, description, location } = req.body;
+
+    const sql = `
+        INSERT INTO maintenance_requests 
+        (asset_id, employee_id, title, description, location, status) 
+        VALUES (?, ?, ?, ?, ?, 'Pending')
+    `;
+
+    db.query(sql, [asset_id, employee_id, title, description, location], err => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "Request submitted successfully" });
     });
 });
 
+app.get('/api/employee-requests/:userId', (req, res) => {
+    const sql = `
+        SELECT r.request_id, r.title, r.status, r.created_at, a.asset_name 
+        FROM maintenance_requests r
+        LEFT JOIN assets a ON r.asset_id = a.asset_id
+        WHERE r.employee_id = ?
+    `;
+    
+    db.query(sql, [req.params.userId], (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
 
 app.get('/api/employee-requests', (req, res) => {
-    const sql = "SELECT * FROM employee_requests WHERE status = 'pending' ORDER BY created_at DESC";
+    const sql = `
+        SELECT r.request_id, r.asset_id, r.title, r.location, r.created_at, u.full_name as employee_name
+        FROM maintenance_requests r
+        JOIN users u ON r.employee_id = u.user_id
+        WHERE r.status = 'Pending'
+    `;
     db.query(sql, (err, results) => {
         if (err) return res.status(500).json(err);
         res.json(results);
     });
 });
 
+app.post('/api/assign-task', (req, res) => {
+    const { request_id, asset_id, technician_name, priority, description, deadline } = req.body;
+    const sql = `
+        INSERT INTO maintenance_tasks (request_id, asset_id, technician_name, priority, description, deadline, status) VALUES (?, ?, ?, ?, ?, ?, 'Assigned')
+    `;
 
-app.post('/api/approve-request', (req, res) => {
-    const { request_id, technician_name, priority, deadline } = req.body;
-
-    db.query("SELECT * FROM employee_requests WHERE request_id = ?", [request_id], (err, results) => {
-        if (err || results.length === 0) return res.status(500).send("Request not found");
-        
-        const reqData = results[0];
-        const taskSql = `INSERT INTO maintenance_tasks 
-            (asset_name, location, description, technician_name, priority, deadline, status) 
-            VALUES (?, ?, ?, ?, ?, ?, 'assigned')`;
-        
-        const taskValues = [
-            reqData.title, 
-            reqData.location, 
-            `Employee Report: ${reqData.description} (Asset: ${reqData.asset_detail})`,
-            technician_name,
-            priority,
-            deadline
-        ];
-
-        db.query(taskSql, taskValues, (err) => {
-            if (err) return res.status(500).send(err);
-
-            db.query("UPDATE employee_requests SET status = 'approved' WHERE request_id = ?", [request_id], (err) => {
-                res.json({ message: "Request approved and task assigned!" });
-            });
-        });
-    });
+    db.query(sql,
+        [[request_id, asset_id, technician_name, priority, description, deadline]],
+        err => {
+            if (err) return res.status(500).json(err);
+            res.json({ message: "Task assigned" });
+        }
+    );
 });
 
-app.get('/api/my-requests/:name', (req, res) => {
-    const employeeName = req.params.name;
-    const sql = "SELECT title, location, status, created_at FROM employee_requests WHERE employee_name = ? ORDER BY created_at DESC";
-    db.query(sql, [employeeName], (err, results) => {
+app.get('/api/all-tasks', (req, res) => {
+    const sql = `
+        SELECT 
+            t.id,
+            a.asset_name,
+            t.technician_name,
+            t.deadline,
+            t.status
+        FROM maintenance_tasks t
+        LEFT JOIN assets a ON t.asset_id = a.asset_id
+        ORDER BY t.deadline ASC
+    `;
+
+    db.query(sql, (err, results) => {
         if (err) return res.status(500).json(err);
         res.json(results);
     });
 });
 
-app.listen(3000, () => console.log("Server running on port 3000"));
+app.get('/api/tech-tasks/:techName', (req, res) => {
+    const sql = `
+        SELECT t.id, t.request_id, t.status, t.priority, t.deadline,
+               t.description, a.asset_name, a.location
+        FROM maintenance_tasks t
+        LEFT JOIN assets a ON t.asset_id = a.asset_id
+        WHERE t.technician_name = ?
+    `;
+    db.query(sql, [req.params.techName], (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
+
+app.post('/api/update-status', (req, res) => {
+    const { task_id, status } = req.body;
+
+    db.query(
+        "UPDATE maintenance_tasks SET status = ? WHERE id = ?",
+        [status, task_id],
+        (err) => {
+            if (err) return res.status(500).json(err);
+
+            if (status === 'Completed') {
+                db.query(
+                    `
+                    UPDATE maintenance_requests r
+                    JOIN maintenance_tasks t ON r.request_id = t.request_id
+                    SET r.status = 'Approved'
+                    WHERE t.id = ?
+                    `,
+                    [task_id]
+                );
+            }
+
+            res.json({ message: "Task updated correctly" });
+        }
+    );
+});
+
+
+app.get('/api/my-requests/:userId', (req, res) => {
+    const sql = `
+        SELECT r.*, a.asset_name 
+        FROM maintenance_requests r
+        LEFT JOIN assets a ON r.asset_id = a.asset_id
+        WHERE r.employee_id = ?
+        ORDER BY r.created_at DESC
+    `;
+    db.query(sql, [req.params.userId], (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
+
+setInterval(() => {
+    db.query(
+        "SELECT asset_id FROM assets WHERE next_maintenance <= CURDATE()",
+        (err, results) => {
+            if (!results) return;
+
+            results.forEach(asset => {
+                db.query(
+                    "INSERT INTO maintenance_requests(asset_id, employee_id, title, description, location, status) VALUES (?, 1, 'Preventive Maintenance', 'Auto generated maintenance', 'System', 'Pending')",
+                    [asset.asset_id]
+                );
+            });
+        }
+    );
+}, 86400000);
+
+
+const PORT = process.env.PORT || 3000; // platform provides PORT
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

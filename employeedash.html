@@ -206,7 +206,12 @@
                     
                     <div class="form-group">
                         <label for="asset_detail">Specific Asset / Item</label>
-                        <input type="text" id="asset_detail" placeholder="e.g., Projector, Water Fountain">
+                        <div class="form-group">
+                            <label for="asset_id">Select Asset *</label>
+                            <select id="asset_id" required>
+                                <option value="">Loading assets...</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <div class="form-group">
@@ -252,13 +257,27 @@
             }
         });
 
+        async function loadAssetsForEmployee() {
+            const res = await fetch('http://localhost:3000/api/assets');
+            const assets = await res.json();
+            const select = document.getElementById('asset_id');
+
+            select.innerHTML = assets.map(a =>
+                `<option value="${a.asset_id}">
+                    ${a.asset_name} (${a.location})
+                </option>`
+            ).join('');
+        }
+
         async function fetchMyRequests() {
-            try {
-                const response = await fetch(`http://localhost:3000/api/my-requests/${encodeURIComponent(loggedInUserName)}`);
+            const body = document.getElementById("myRequestsBody"); // Added this missing reference
+            const userId = localStorage.getItem('userId'); 
+
+            try { // <--- Added missing try
+                const response = await fetch(`http://localhost:3000/api/my-requests/${userId}`);
                 const requests = await response.json();
-                const body = document.getElementById('myRequestsBody');
                 
-                if (requests.length === 0) {
+                if (!requests || requests.length === 0) {
                     body.innerHTML = '<tr><td colspan="4" style="text-align:center;">No requests found.</td></tr>';
                     return;
                 }
@@ -268,22 +287,24 @@
                         <td><strong>${req.title}</strong></td>
                         <td>${req.location}</td>
                         <td>${new Date(req.created_at).toLocaleDateString()}</td>
-                        <td><span class="status-pill status-${req.status}">${req.status}</span></td>
+                        <td><span class="status-pill status-${req.status.toLowerCase()}">${req.status}</span></td>
                     </tr>
                 `).join('');
-            } catch (err) {
+            } catch (err) { // <--- Now the catch works
                 console.error("Error loading requests:", err);
+                body.innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Failed to load data.</td></tr>';
             }
         }
 
         newRequestForm.addEventListener('submit', async function(event) {
             event.preventDefault();
+
             const submissionData = {
-                employee_name: loggedInUserName,
+                employee_id: localStorage.getItem('userId'), // <--- SEND THE ID NUMBER
+                asset_id: document.getElementById('asset_id').value,
                 title: document.getElementById('title').value,
                 location: `${floorSelect.value} - ${roomSelect.value}`,
-                asset_detail: document.getElementById('asset_detail').value,
-                description: document.getElementById('description').value,
+                description: document.getElementById('description').value
             };
 
             const response = await fetch('http://localhost:3000/api/submit-request', {
@@ -305,6 +326,7 @@
         }
 
         fetchMyRequests();
+        loadAssetsForEmployee();
     </script>
 </body>
 </html>
